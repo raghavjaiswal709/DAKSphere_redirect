@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fyers Authentication Bridge - DAKSphere</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔐</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            line-height: 1.6;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .logo {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 2rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        p {
+            margin-bottom: 1.5rem;
+            opacity: 0.9;
+        }
+        
+        .status-message {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .error-message {
+            border-left-color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+        }
+        
+        .success-message {
+            border-left-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+        }
+        
+        .manual-link {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+            font-weight: 500;
+            margin: 1rem 0;
+        }
+        
+        .manual-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .code-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            margin: 1rem 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .footer {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            border-radius: 2px;
+            animation: progress 3s ease-in-out;
+        }
+        
+        @keyframes progress {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+        
+        .retry-button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 0 0.5rem;
+        }
+        
+        .retry-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 2rem 1.5rem;
+                margin: 1rem;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .manual-link {
+                padding: 0.8rem 1.5rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🔐</div>
+        
+        <div id="content">
+            <!-- Content will be dynamically updated by JavaScript -->
+            <div class="spinner"></div>
+            <h1 class="pulse">Processing Authentication...</h1>
+            <p>Please wait while we redirect you to your local development environment.</p>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <strong>DAKSphere</strong> Authentication Bridge<br>
+            <small>Powered by GitHub Pages • Secure HTTPS Connection</small>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const LOCAL_PORT = 5000;
+        const LOCAL_HOST = 'localhost';
+        const REDIRECT_DELAY = 1000; // 1 second delay before redirect
+        const FALLBACK_DELAY = 4000; // 4 seconds before showing manual link
+        
+        // Get DOM elements
+        const content = document.getElementById('content');
+        
+        // Utility functions
+        function updateContent(html) {
+            content.innerHTML = html;
+        }
+        
+        function showSpinner() {
+            return '<div class="spinner"></div>';
+        }
+        
+        function logMessage(message, data = {}) {
+            console.log(`[Auth Bridge] ${message}`, data);
+        }
+        
+        // Main authentication processing function
+        function processAuthentication() {
+            // Extract URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+            
+            // Log received parameters
+            logMessage('Bridge page loaded', { 
+                url: window.location.href,
+                code: code ? `${code.substring(0, 10)}...` : null,
+                state: state,
+                error: error 
+            });
+            
+            // Handle error case
+            if (error) {
+                showError(`Authentication failed: ${error}`);
+                return;
+            }
+            
+            // Handle missing code
+            if (!code) {
+                showError('No authorization code received from Fyers.');
+                return;
+            }
+            
+            // Build localhost redirect URL
+            const localUrl = `http://${LOCAL_HOST}:${LOCAL_PORT}/auth/fyers/callback?code=${code}&state=${encodeURIComponent(state || '')}`;
+            
+            logMessage('Attempting redirect to localhost', { localUrl });
+            
+            // Show success message and redirect
+            showSuccess(code, localUrl);
+        }
+        
+        // Show success state and handle redirect
+        function showSuccess(code, localUrl) {
+            updateContent(`
+                ${showSpinner()}
+                <h1>✅ Authentication Successful!</h1>
+                <div class="status-message success-message">
+                    <strong>Auth code received successfully</strong><br>
+                    Redirecting to your local development environment...
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+            `);
+            
+            // Attempt automatic redirect
+            setTimeout(() => {
+                try {
+                    logMessage('Attempting automatic redirect');
+                    window.location.href = localUrl;
+                } catch (redirectError) {
+                    logMessage('Automatic redirect failed', { error: redirectError });
+                    showManualRedirect(code, localUrl);
+                }
+            }, REDIRECT_DELAY);
+            
+            // Show manual fallback after delay
+            setTimeout(() => {
+                showManualRedirect(code, localUrl);
+            }, FALLBACK_DELAY);
+        }
+        
+        // Show manual redirect option
+        function showManualRedirect(code, localUrl) {
+            updateContent(`
+                <h1>🔗 Manual Redirect Required</h1>
+                <div class="status-message">
+                    <strong>Automatic redirect didn't work</strong><br>
+                    This usually means your local development server isn't running.
+                </div>
+                
+                <p><strong>Click the button below to complete authentication:</strong></p>
+                
+                <a href="${localUrl}" class="manual-link">
+                    🚀 Complete Authentication on Localhost
+                </a>
+                
+                <p><small>Make sure your development server is running on <strong>http://${LOCAL_HOST}:${LOCAL_PORT}</strong></small></p>
+                
+                <details style="margin-top: 2rem; text-align: left;">
+                    <summary style="cursor: pointer; font-weight: bold;">🔧 Advanced Options</summary>
+                    <div style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                        <p><strong>Authorization Code:</strong></p>
+                        <div class="code-display">${code}</div>
+                        
+                        <p><strong>Full Redirect URL:</strong></p>
+                        <div class="code-display">${localUrl}</div>
+                        
+                        <p style="margin-top: 1rem;"><small>You can copy these manually if needed.</small></p>
+                    </div>
+                </details>
+            `);
+        }
+        
+        // Show error state
+        function showError(message) {
+            logMessage('Error occurred', { message });
+            
+            updateContent(`
+                <h1>❌ Authentication Error</h1>
+                <div class="status-message error-message">
+                    <strong>Authentication failed</strong><br>
+                    ${message}
+                </div>
+                
+                <p>Please try again or contact support if the problem persists.</p>
+                
+                <button class="retry-button" onclick="retryAuthentication()">
+                    🔄 Retry Authentication
+                </button>
+                
+                <button class="retry-button" onclick="goToHome()">
+                    🏠 Go to Homepage
+                </button>
+            `);
+        }
+        
+        // Retry authentication
+        function retryAuthentication() {
+            logMessage('Retrying authentication');
+            location.reload();
+        }
+        
+        // Go to homepage (you can customize this URL)
+        function goToHome() {
+            window.location.href = `http://${LOCAL_HOST}:${LOCAL_PORT}`;
+        }
+        
+        // Initialize authentication process when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            logMessage('Bridge page initialized');
+            
+            // Add small delay for better UX
+            setTimeout(() => {
+                processAuthentication();
+            }, 500);
+        });
+        
+        // Handle page visibility change (useful for debugging)
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                logMessage('Page became visible');
+            }
+        });
+        
+        // Global error handler
+        window.addEventListener('error', function(event) {
+            logMessage('Global error occurred', { 
+                message: event.message, 
+                filename: event.filename, 
+                lineno: event.lineno 
+            });
+        });
+    </script>
+</body>
+</html>
