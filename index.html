@@ -122,6 +122,8 @@
             word-break: break-all;
             margin: 1rem 0;
             border: 1px solid rgba(255, 255, 255, 0.2);
+            max-height: 100px;
+            overflow-y: auto;
         }
         
         .footer {
@@ -168,6 +170,15 @@
         .retry-button:hover {
             background: rgba(255, 255, 255, 0.3);
             transform: translateY(-1px);
+        }
+        
+        .debug-info {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            text-align: left;
+            font-size: 0.8rem;
         }
         
         @media (max-width: 600px) {
@@ -227,23 +238,31 @@
         }
         
         function logMessage(message, data = {}) {
-            console.log(`[Auth Bridge] ${message}`, data);
+            console.log(`[DAKSphere Auth Bridge] ${message}`, data);
         }
         
         // Main authentication processing function
         function processAuthentication() {
             // Extract URL parameters
             const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
-            const error = urlParams.get('error');
             
-            // Log received parameters
-            logMessage('Bridge page loaded', { 
+            // UPDATED: Extract the correct parameters from Fyers V3 response
+            const status = urlParams.get('s');           // Status (should be 'ok')
+            const code = urlParams.get('code');          // Status code (e.g., '200')
+            const authCode = urlParams.get('auth_code'); // ACTUAL JWT auth token
+            const state = urlParams.get('state');        // State parameter
+            const error = urlParams.get('error');        // Error (if any)
+            
+            // Log all received parameters for debugging
+            logMessage('Bridge page loaded with Fyers V3 response', { 
                 url: window.location.href,
-                code: code ? `${code.substring(0, 10)}...` : null,
+                status: status,
+                code: code,
+                authCode: authCode ? `${authCode.substring(0, 20)}...${authCode.substring(authCode.length - 10)}` : null,
+                authCodeLength: authCode ? authCode.length : 0,
                 state: state,
-                error: error 
+                error: error,
+                timestamp: new Date().toISOString()
             });
             
             // Handle error case
@@ -252,79 +271,107 @@
                 return;
             }
             
-            // Handle missing code
-            if (!code) {
-                showError('No authorization code received from Fyers.');
+            // Check for unsuccessful status
+            if (status && status !== 'ok') {
+                showError(`Authentication status error: ${status}`);
                 return;
             }
             
-            // Build localhost redirect URL
-            const localUrl = `http://${LOCAL_HOST}:${LOCAL_PORT}/auth/fyers/callback?code=${code}&state=${encodeURIComponent(state || '')}`;
+            // UPDATED: Use auth_code instead of code
+            if (!authCode) {
+                showError('No authorization code received from Fyers. Missing auth_code parameter.');
+                logMessage('Missing auth_code parameter', {
+                    allParams: Object.fromEntries(urlParams.entries())
+                });
+                return;
+            }
             
-            logMessage('Attempting redirect to localhost', { localUrl });
+            // Validate that authCode looks like a JWT token
+            if (!authCode.includes('.') || authCode.length < 100) {
+                showError('Invalid authorization code format received.');
+                logMessage('Invalid auth code format', {
+                    authCode: authCode,
+                    length: authCode.length
+                });
+                return;
+            }
+            
+            // Build localhost redirect URL with the ACTUAL auth code
+            const localUrl = `http://${LOCAL_HOST}:${LOCAL_PORT}/auth/fyers/callback?code=${encodeURIComponent(authCode)}&state=${encodeURIComponent(state || '')}`;
+            
+            logMessage('Attempting redirect to localhost with real auth code', { 
+                localUrl: `${LOCAL_HOST}:${LOCAL_PORT}/auth/fyers/callback`,
+                authCodeLength: authCode.length,
+                authCodePreview: `${authCode.substring(0, 50)}...`
+            });
             
             // Show success message and redirect
-            showSuccess(code, localUrl);
+            showSuccess(authCode, localUrl);
         }
         
         // Show success state and handle redirect
-        function showSuccess(code, localUrl) {
+        function showSuccess(authCode, localUrl) {
             updateContent(`
                 ${showSpinner()}
                 <h1>✅ Authentication Successful!</h1>
                 <div class="status-message success-message">
-                    <strong>Auth code received successfully</strong><br>
-                    Redirecting to your local development environment...
+                    <strong>JWT Auth token received from Fyers</strong><br>
+                    Token length: ${authCode.length} characters<br>
+                    Redirecting to your local DAKSphere application...
                 </div>
                 <div class="progress-bar">
                     <div class="progress-fill"></div>
                 </div>
+                <p><small>Redirecting to: ${LOCAL_HOST}:${LOCAL_PORT}</small></p>
             `);
             
             // Attempt automatic redirect
             setTimeout(() => {
                 try {
-                    logMessage('Attempting automatic redirect');
+                    logMessage('Attempting automatic redirect with JWT token');
                     window.location.href = localUrl;
                 } catch (redirectError) {
                     logMessage('Automatic redirect failed', { error: redirectError });
-                    showManualRedirect(code, localUrl);
+                    showManualRedirect(authCode, localUrl);
                 }
             }, REDIRECT_DELAY);
             
             // Show manual fallback after delay
             setTimeout(() => {
-                showManualRedirect(code, localUrl);
+                showManualRedirect(authCode, localUrl);
             }, FALLBACK_DELAY);
         }
         
         // Show manual redirect option
-        function showManualRedirect(code, localUrl) {
+        function showManualRedirect(authCode, localUrl) {
             updateContent(`
                 <h1>🔗 Manual Redirect Required</h1>
                 <div class="status-message">
                     <strong>Automatic redirect didn't work</strong><br>
-                    This usually means your local development server isn't running.
+                    This usually means your local DAKSphere application isn't running on port ${LOCAL_PORT}.
                 </div>
                 
                 <p><strong>Click the button below to complete authentication:</strong></p>
                 
                 <a href="${localUrl}" class="manual-link">
-                    🚀 Complete Authentication on Localhost
+                    🚀 Complete Authentication on DAKSphere
                 </a>
                 
-                <p><small>Make sure your development server is running on <strong>http://${LOCAL_HOST}:${LOCAL_PORT}</strong></small></p>
+                <p><small>Make sure your DAKSphere app is running on <strong>http://${LOCAL_HOST}:${LOCAL_PORT}</strong></small></p>
                 
                 <details style="margin-top: 2rem; text-align: left;">
-                    <summary style="cursor: pointer; font-weight: bold;">🔧 Advanced Options</summary>
+                    <summary style="cursor: pointer; font-weight: bold;">🔧 Developer Info</summary>
                     <div style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                        <p><strong>Authorization Code:</strong></p>
-                        <div class="code-display">${code}</div>
+                        <p><strong>JWT Authorization Token:</strong></p>
+                        <div class="code-display">${authCode}</div>
+                        
+                        <p><strong>Token Length:</strong> ${authCode.length} characters</p>
+                        <p><strong>Token Type:</strong> ${authCode.startsWith('eyJ') ? 'JWT (Base64 encoded)' : 'Unknown format'}</p>
                         
                         <p><strong>Full Redirect URL:</strong></p>
                         <div class="code-display">${localUrl}</div>
                         
-                        <p style="margin-top: 1rem;"><small>You can copy these manually if needed.</small></p>
+                        <p style="margin-top: 1rem;"><small>This is the actual Fyers V3 JWT token needed for authentication.</small></p>
                     </div>
                 </details>
             `);
@@ -334,6 +381,10 @@
         function showError(message) {
             logMessage('Error occurred', { message });
             
+            // Get current URL parameters for debugging
+            const urlParams = new URLSearchParams(window.location.search);
+            const debugInfo = Object.fromEntries(urlParams.entries());
+            
             updateContent(`
                 <h1>❌ Authentication Error</h1>
                 <div class="status-message error-message">
@@ -341,15 +392,27 @@
                     ${message}
                 </div>
                 
-                <p>Please try again or contact support if the problem persists.</p>
+                <p>Please try again or contact DAKSphere support if the problem persists.</p>
                 
                 <button class="retry-button" onclick="retryAuthentication()">
                     🔄 Retry Authentication
                 </button>
                 
-                <button class="retry-button" onclick="goToHome()">
-                    🏠 Go to Homepage
+                <button class="retry-button" onclick="goToLocalApp()">
+                    🏠 Go to Local App
                 </button>
+                
+                <details style="margin-top: 1rem;">
+                    <summary style="cursor: pointer; font-weight: bold;">🔍 Debug Information</summary>
+                    <div class="debug-info">
+                        <strong>URL Parameters Received:</strong><br>
+                        ${Object.entries(debugInfo).map(([key, value]) => 
+                            `<strong>${key}:</strong> ${value}<br>`
+                        ).join('')}
+                        <br>
+                        <strong>Expected:</strong> auth_code parameter with JWT token
+                    </div>
+                </details>
             `);
         }
         
@@ -359,14 +422,18 @@
             location.reload();
         }
         
-        // Go to homepage (you can customize this URL)
-        function goToHome() {
+        // Go to local app
+        function goToLocalApp() {
             window.location.href = `http://${LOCAL_HOST}:${LOCAL_PORT}`;
         }
         
         // Initialize authentication process when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            logMessage('Bridge page initialized');
+            logMessage('DAKSphere Auth Bridge initialized for Fyers V3', {
+                targetPort: LOCAL_PORT,
+                targetHost: LOCAL_HOST,
+                currentUrl: window.location.href
+            });
             
             // Add small delay for better UX
             setTimeout(() => {
@@ -388,6 +455,15 @@
                 filename: event.filename, 
                 lineno: event.lineno 
             });
+        });
+        
+        // Show current configuration on load
+        logMessage('Configuration loaded', {
+            localPort: LOCAL_PORT,
+            localHost: LOCAL_HOST,
+            redirectDelay: REDIRECT_DELAY,
+            fallbackDelay: FALLBACK_DELAY,
+            expectingParameter: 'auth_code (JWT token)'
         });
     </script>
 </body>
