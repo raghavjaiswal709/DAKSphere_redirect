@@ -5,7 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fyers Authentication Bridge - DAKSphere</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔐</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --background: 0 0% 3.9%;
+            --foreground: 0 0% 98%;
+            --card: 0 0% 3.9%;
+            --card-foreground: 0 0% 98%;
+            --popover: 0 0% 3.9%;
+            --popover-foreground: 0 0% 98%;
+            --primary: 0 0% 98%;
+            --primary-foreground: 0 0% 9%;
+            --secondary: 0 0% 14.9%;
+            --secondary-foreground: 0 0% 98%;
+            --muted: 0 0% 14.9%;
+            --muted-foreground: 0 0% 63.9%;
+            --accent: 0 0% 14.9%;
+            --accent-foreground: 0 0% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 0 0% 98%;
+            --border: 0 0% 14.9%;
+            --input: 0 0% 14.9%;
+            --ring: 0 0% 83.1%;
+            --success: 142.1 76.2% 36.3%;
+            --success-foreground: 355.7 100% 97.3%;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -13,41 +40,42 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            line-height: 1.6;
+            line-height: 1.5;
+            font-feature-settings: "cv11", "ss01";
+            font-variation-settings: "opsz" 32;
         }
         
         .container {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
+            background-color: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            border-radius: 0.75rem;
             padding: 3rem 2rem;
             text-align: center;
-            max-width: 500px;
+            max-width: 28rem;
             width: 90%;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         }
         
         .logo {
-            font-size: 3rem;
-            margin-bottom: 1rem;
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
         }
         
         .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
+            width: 2rem;
+            height: 2rem;
+            border: 2px solid hsl(var(--muted));
             border-radius: 50%;
-            border-top: 4px solid white;
+            border-top: 2px solid hsl(var(--foreground));
             animation: spin 1s linear infinite;
-            margin: 0 auto 2rem;
+            margin: 0 auto 1.5rem;
         }
         
         @keyframes spin {
@@ -65,88 +93,96 @@
         }
         
         h1 {
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             font-weight: 600;
-            margin-bottom: 1rem;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 0.5rem;
+            line-height: 1.2;
         }
         
         p {
-            margin-bottom: 1.5rem;
-            opacity: 0.9;
+            margin-bottom: 1rem;
+            color: hsl(var(--muted-foreground));
+            font-size: 0.875rem;
         }
         
         .status-message {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+            background-color: hsl(var(--muted));
+            border-radius: 0.5rem;
             padding: 1rem;
             margin: 1.5rem 0;
-            border-left: 4px solid #4CAF50;
+            border-left: 3px solid hsl(var(--success));
+            text-align: left;
+            font-size: 0.875rem;
         }
         
         .error-message {
-            border-left-color: #f44336;
-            background: rgba(244, 67, 54, 0.1);
+            border-left-color: hsl(var(--destructive));
+            background-color: hsl(var(--destructive) / 0.1);
+            color: hsl(var(--destructive-foreground));
         }
         
         .success-message {
-            border-left-color: #4CAF50;
-            background: rgba(76, 175, 80, 0.1);
+            border-left-color: hsl(var(--success));
+            background-color: hsl(var(--success) / 0.1);
         }
         
         .manual-link {
-            display: inline-block;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
             text-decoration: none;
-            padding: 1rem 2rem;
-            border-radius: 10px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            transition: all 0.3s ease;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid hsl(var(--border));
+            transition: all 0.2s ease;
             font-weight: 500;
+            font-size: 0.875rem;
             margin: 1rem 0;
+            gap: 0.5rem;
         }
         
         .manual-link:hover {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: rgba(255, 255, 255, 0.5);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            background-color: hsl(var(--primary) / 0.9);
+            transform: translateY(-1px);
         }
         
         .code-display {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 1rem;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
+            background-color: hsl(var(--muted));
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.75rem;
             word-break: break-all;
-            margin: 1rem 0;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            max-height: 100px;
+            margin: 0.75rem 0;
+            border: 1px solid hsl(var(--border));
+            max-height: 6rem;
             overflow-y: auto;
+            text-align: left;
         }
         
         .footer {
             margin-top: 2rem;
             padding-top: 1.5rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            opacity: 0.7;
-            font-size: 0.9rem;
+            border-top: 1px solid hsl(var(--border));
+            color: hsl(var(--muted-foreground));
+            font-size: 0.75rem;
         }
         
         .progress-bar {
             width: 100%;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
+            height: 0.25rem;
+            background-color: hsl(var(--muted));
+            border-radius: 0.125rem;
             overflow: hidden;
             margin: 1rem 0;
         }
         
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #4CAF50, #8BC34A);
-            border-radius: 2px;
+            background-color: hsl(var(--primary));
+            border-radius: 0.125rem;
             animation: progress 3s ease-in-out;
         }
         
@@ -156,44 +192,128 @@
         }
         
         .retry-button {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            padding: 0.8rem 1.5rem;
-            border-radius: 8px;
+            background-color: hsl(var(--secondary));
+            color: hsl(var(--secondary-foreground));
+            border: 1px solid hsl(var(--border));
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
             cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            margin: 0 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin: 0 0.25rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
         }
         
         .retry-button:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background-color: hsl(var(--secondary) / 0.8);
             transform: translateY(-1px);
         }
         
         .debug-info {
-            background: rgba(0, 0, 0, 0.2);
+            background-color: hsl(var(--muted));
             padding: 1rem;
-            border-radius: 8px;
+            border-radius: 0.5rem;
             margin-top: 1rem;
             text-align: left;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
+            border: 1px solid hsl(var(--border));
         }
         
-        @media (max-width: 600px) {
+        details {
+            margin-top: 1rem;
+        }
+        
+        summary {
+            cursor: pointer;
+            font-weight: 500;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.2s ease;
+        }
+        
+        summary:hover {
+            background-color: hsl(var(--muted));
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            background-color: hsl(var(--muted));
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .success-badge {
+            background-color: hsl(var(--success) / 0.2);
+            color: hsl(var(--success));
+        }
+        
+        .error-badge {
+            background-color: hsl(var(--destructive) / 0.2);
+            color: hsl(var(--destructive));
+        }
+        
+        @media (max-width: 640px) {
             .container {
                 padding: 2rem 1.5rem;
                 margin: 1rem;
+                max-width: none;
             }
             
             h1 {
-                font-size: 1.5rem;
+                font-size: 1.25rem;
             }
             
             .manual-link {
-                padding: 0.8rem 1.5rem;
-                font-size: 0.9rem;
+                padding: 0.625rem 1.25rem;
+                font-size: 0.8125rem;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+        }
+
+        /* Loading animation improvements */
+        .loading-dots {
+            display: inline-flex;
+            gap: 0.25rem;
+            margin-left: 0.5rem;
+        }
+
+        .loading-dots span {
+            width: 0.25rem;
+            height: 0.25rem;
+            background-color: hsl(var(--muted-foreground));
+            border-radius: 50%;
+            animation: loading-dot 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes loading-dot {
+            0%, 80%, 100% { 
+                transform: scale(0);
+                opacity: 0.5;
+            } 
+            40% { 
+                transform: scale(1);
+                opacity: 1;
             }
         }
     </style>
@@ -205,7 +325,7 @@
         <div id="content">
             <!-- Content will be dynamically updated by JavaScript -->
             <div class="spinner"></div>
-            <h1 class="pulse">Processing Authentication...</h1>
+            <h1 class="pulse">Processing Authentication<div class="loading-dots"><span></span><span></span><span></span></div></h1>
             <p>Please wait while we redirect you to your local development environment.</p>
             <div class="progress-bar">
                 <div class="progress-fill"></div>
@@ -313,7 +433,8 @@
         function showSuccess(authCode, localUrl) {
             updateContent(`
                 ${showSpinner()}
-                <h1>✅ Authentication Successful!</h1>
+                <h1><span class="status-badge success-badge">✓ Success</span></h1>
+                <h1 style="margin-top: 0.5rem;">Authentication Successful</h1>
                 <div class="status-message success-message">
                     <strong>JWT Auth token received from Fyers</strong><br>
                     Token length: ${authCode.length} characters<br>
@@ -322,7 +443,7 @@
                 <div class="progress-bar">
                     <div class="progress-fill"></div>
                 </div>
-                <p><small>Redirecting to: ${LOCAL_HOST}:${LOCAL_PORT}</small></p>
+                <p>Redirecting to: <code style="background: hsl(var(--muted)); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.75rem;">${LOCAL_HOST}:${LOCAL_PORT}</code></p>
             `);
             
             // Attempt automatic redirect
@@ -345,7 +466,8 @@
         // Show manual redirect option
         function showManualRedirect(authCode, localUrl) {
             updateContent(`
-                <h1>🔗 Manual Redirect Required</h1>
+                <h1><span class="status-badge">🔗</span></h1>
+                <h1 style="margin-top: 0.5rem;">Manual Redirect Required</h1>
                 <div class="status-message">
                     <strong>Automatic redirect didn't work</strong><br>
                     This usually means your local DAKSphere application isn't running on port ${LOCAL_PORT}.
@@ -357,21 +479,31 @@
                     🚀 Complete Authentication on DAKSphere
                 </a>
                 
-                <p><small>Make sure your DAKSphere app is running on <strong>http://${LOCAL_HOST}:${LOCAL_PORT}</strong></small></p>
+                <p>Make sure your DAKSphere app is running on <code style="background: hsl(var(--muted)); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.75rem;">http://${LOCAL_HOST}:${LOCAL_PORT}</code></p>
                 
-                <details style="margin-top: 2rem; text-align: left;">
-                    <summary style="cursor: pointer; font-weight: bold;">🔧 Developer Info</summary>
-                    <div style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                        <p><strong>JWT Authorization Token:</strong></p>
-                        <div class="code-display">${authCode}</div>
-                        
-                        <p><strong>Token Length:</strong> ${authCode.length} characters</p>
-                        <p><strong>Token Type:</strong> ${authCode.startsWith('eyJ') ? 'JWT (Base64 encoded)' : 'Unknown format'}</p>
-                        
-                        <p><strong>Full Redirect URL:</strong></p>
-                        <div class="code-display">${localUrl}</div>
-                        
-                        <p style="margin-top: 1rem;"><small>This is the actual Fyers V3 JWT token needed for authentication.</small></p>
+                <details style="margin-top: 2rem;">
+                    <summary>🔧 Developer Information</summary>
+                    <div style="margin-top: 1rem;">
+                        <div class="status-message">
+                            <p><strong>JWT Authorization Token:</strong></p>
+                            <div class="code-display">${authCode}</div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+                                <div>
+                                    <p><strong>Token Length:</strong></p>
+                                    <span class="status-badge">${authCode.length} chars</span>
+                                </div>
+                                <div>
+                                    <p><strong>Token Type:</strong></p>
+                                    <span class="status-badge">${authCode.startsWith('eyJ') ? 'JWT' : 'Unknown'}</span>
+                                </div>
+                            </div>
+                            
+                            <p><strong>Full Redirect URL:</strong></p>
+                            <div class="code-display">${localUrl}</div>
+                            
+                            <p style="margin-top: 1rem; font-size: 0.75rem; color: hsl(var(--muted-foreground));">This is the actual Fyers V3 JWT token needed for authentication.</p>
+                        </div>
                     </div>
                 </details>
             `);
@@ -386,7 +518,8 @@
             const debugInfo = Object.fromEntries(urlParams.entries());
             
             updateContent(`
-                <h1>❌ Authentication Error</h1>
+                <h1><span class="status-badge error-badge">❌ Error</span></h1>
+                <h1 style="margin-top: 0.5rem;">Authentication Failed</h1>
                 <div class="status-message error-message">
                     <strong>Authentication failed</strong><br>
                     ${message}
@@ -394,23 +527,29 @@
                 
                 <p>Please try again or contact DAKSphere support if the problem persists.</p>
                 
-                <button class="retry-button" onclick="retryAuthentication()">
-                    🔄 Retry Authentication
-                </button>
-                
-                <button class="retry-button" onclick="goToLocalApp()">
-                    🏠 Go to Local App
-                </button>
+                <div class="button-group">
+                    <button class="retry-button" onclick="retryAuthentication()">
+                        🔄 Retry Authentication
+                    </button>
+                    
+                    <button class="retry-button" onclick="goToLocalApp()">
+                        🏠 Go to Local App
+                    </button>
+                </div>
                 
                 <details style="margin-top: 1rem;">
-                    <summary style="cursor: pointer; font-weight: bold;">🔍 Debug Information</summary>
+                    <summary>🔍 Debug Information</summary>
                     <div class="debug-info">
-                        <strong>URL Parameters Received:</strong><br>
-                        ${Object.entries(debugInfo).map(([key, value]) => 
-                            `<strong>${key}:</strong> ${value}<br>`
-                        ).join('')}
-                        <br>
-                        <strong>Expected:</strong> auth_code parameter with JWT token
+                        <p><strong>URL Parameters Received:</strong></p>
+                        ${Object.entries(debugInfo).length > 0 ? 
+                            Object.entries(debugInfo).map(([key, value]) => 
+                                `<div style="margin: 0.5rem 0;"><strong>${key}:</strong> <code>${value}</code></div>`
+                            ).join('') :
+                            '<p style="color: hsl(var(--muted-foreground));">No parameters received</p>'
+                        }
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid hsl(var(--border));">
+                            <p><strong>Expected:</strong> <code>auth_code</code> parameter with JWT token</p>
+                        </div>
                     </div>
                 </details>
             `);
