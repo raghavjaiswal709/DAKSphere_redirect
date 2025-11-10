@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* ... (keep all your existing styles) ... */
         :root {
             --background: 0 0% 3.9%;
             --foreground: 0 0% 98%;
@@ -266,6 +267,11 @@
             background-color: hsl(var(--destructive) / 0.2);
             color: hsl(var(--destructive));
         }
+
+        .env-badge {
+            background-color: hsl(210, 100%, 50% / 0.2);
+            color: hsl(210, 100%, 70%);
+        }
         
         @media (max-width: 640px) {
             .container {
@@ -288,7 +294,6 @@
             }
         }
 
-        /* Loading animation improvements */
         .loading-dots {
             display: inline-flex;
             gap: 0.25rem;
@@ -323,10 +328,9 @@
         <div class="logo">🔐</div>
         
         <div id="content">
-            <!-- Content will be dynamically updated by JavaScript -->
             <div class="spinner"></div>
             <h1 class="pulse">Processing Authentication<div class="loading-dots"><span></span><span></span><span></span></div></h1>
-            <p>Please wait while we redirect you to your local development environment.</p>
+            <p>Please wait while we redirect you to your development environment.</p>
             <div class="progress-bar">
                 <div class="progress-fill"></div>
             </div>
@@ -339,16 +343,46 @@
     </div>
 
     <script>
-        // Configuration
-        const LOCAL_PORT = 3000;
-        const LOCAL_HOST = 'localhost';
-        const REDIRECT_DELAY = 1000; // 1 second delay before redirect
-        const FALLBACK_DELAY = 4000; // 4 seconds before showing manual link
+        // ==========================================
+        // DYNAMIC ENVIRONMENT DETECTION
+        // ==========================================
+        
+        /**
+         * Configuration for different environments
+         * The system will try each URL in order until one responds
+         */
+        const ENVIRONMENT_CONFIG = {
+            // Primary: Try server first (faster if running on network)
+            SERVER: {
+                host: '100.93.172.21',
+                port: 3000,
+                protocol: 'http',
+                priority: 1,
+                name: 'Tailscale Server'
+            },
+            // Fallback: Try localhost second
+            LOCALHOST: {
+                host: 'localhost',
+                port: 3000,
+                protocol: 'http',
+                priority: 2,
+                name: 'Local Development'
+            }
+        };
+
+        const REDIRECT_DELAY = 1000;
+        const FALLBACK_DELAY = 4000;
+        const HEALTH_CHECK_TIMEOUT = 2000; // 2 seconds to check if server is alive
+        
+        let detectedEnvironment = null;
         
         // Get DOM elements
         const content = document.getElementById('content');
         
-        // Utility functions
+        // ==========================================
+        // UTILITY FUNCTIONS
+        // ==========================================
+        
         function updateContent(html) {
             content.innerHTML = html;
         }
@@ -360,20 +394,109 @@
         function logMessage(message, data = {}) {
             console.log(`[DAKSphere Auth Bridge] ${message}`, data);
         }
+
+        /**
+         * Check if a specific environment is reachable
+         * Uses a health check endpoint or connection test
+         */
+        async function checkEnvironmentHealth(envConfig) {
+            const baseUrl = `${envConfig.protocol}://${envConfig.host}:${envConfig.port}`;
+            
+            logMessage(`Checking ${envConfig.name}`, { url: baseUrl });
+            
+            try {
+                // Create a promise that races between fetch and timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
+                
+                // Try to fetch a health endpoint or just make a connection
+                const response = await fetch(`${baseUrl}/health`, {
+                    method: 'GET',
+                    signal: controller.signal,
+                    mode: 'no-cors', // Allow checking even if CORS is not configured
+                }).catch(() => {
+                    // If /health doesn't exist, try root
+                    return fetch(baseUrl, {
+                        method: 'HEAD',
+                        signal: controller.signal,
+                        mode: 'no-cors'
+                    });
+                });
+                
+                clearTimeout(timeoutId);
+                
+                logMessage(`${envConfig.name} is reachable`, { status: 'online' });
+                return true;
+            } catch (error) {
+                logMessage(`${envConfig.name} is not reachable`, { 
+                    error: error.name,
+                    status: 'offline'
+                });
+                return false;
+            }
+        }
+
+        /**
+         * Detect which environment is currently running
+         * Returns the first reachable environment based on priority
+         */
+        async function detectEnvironment() {
+            logMessage('Starting environment detection');
+            
+            // Sort environments by priority
+            const environments = Object.values(ENVIRONMENT_CONFIG).sort((a, b) => a.priority - b.priority);
+            
+            // Check each environment in order
+            for (const env of environments) {
+                const isReachable = await checkEnvironmentHealth(env);
+                if (isReachable) {
+                    logMessage('Environment detected', { 
+                        name: env.name,
+                        host: env.host,
+                        port: env.port
+                    });
+                    return env;
+                }
+            }
+            
+            // If no environment is reachable, return localhost as fallback
+            logMessage('No environment detected, using localhost fallback');
+            return ENVIRONMENT_CONFIG.LOCALHOST;
+        }
+
+        /**
+         * Build the callback URL based on detected environment
+         */
+        function buildCallbackUrl(envConfig, authCode, state) {
+            const baseUrl = `${envConfig.protocol}://${envConfig.host}:${envConfig.port}`;
+            return `${baseUrl}/auth/fyers/callback?code=${encodeURIComponent(authCode)}&state=${encodeURIComponent(state || '')}`;
+        }
+
+        /**
+         * Build multiple fallback URLs for manual redirect
+         */
+        function buildAllCallbackUrls(authCode, state) {
+            const urls = {};
+            for (const [key, config] of Object.entries(ENVIRONMENT_CONFIG)) {
+                urls[key] = buildCallbackUrl(config, authCode, state);
+            }
+            return urls;
+        }
         
-        // Main authentication processing function
-        function processAuthentication() {
+        // ==========================================
+        // AUTHENTICATION PROCESSING
+        // ==========================================
+        
+        async function processAuthentication() {
             // Extract URL parameters
             const urlParams = new URLSearchParams(window.location.search);
             
-            // UPDATED: Extract the correct parameters from Fyers V3 response
-            const status = urlParams.get('s');           // Status (should be 'ok')
-            const code = urlParams.get('code');          // Status code (e.g., '200')
-            const authCode = urlParams.get('auth_code'); // ACTUAL JWT auth token
-            const state = urlParams.get('state');        // State parameter
-            const error = urlParams.get('error');        // Error (if any)
+            const status = urlParams.get('s');
+            const code = urlParams.get('code');
+            const authCode = urlParams.get('auth_code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
             
-            // Log all received parameters for debugging
             logMessage('Bridge page loaded with Fyers V3 response', { 
                 url: window.location.href,
                 status: status,
@@ -397,40 +520,50 @@
                 return;
             }
             
-            // UPDATED: Use auth_code instead of code
+            // Validate auth code
             if (!authCode) {
                 showError('No authorization code received from Fyers. Missing auth_code parameter.');
-                logMessage('Missing auth_code parameter', {
-                    allParams: Object.fromEntries(urlParams.entries())
-                });
                 return;
             }
             
-            // Validate that authCode looks like a JWT token
+            // Validate JWT format
             if (!authCode.includes('.') || authCode.length < 100) {
                 showError('Invalid authorization code format received.');
-                logMessage('Invalid auth code format', {
-                    authCode: authCode,
-                    length: authCode.length
-                });
                 return;
             }
             
-            // Build localhost redirect URL with the ACTUAL auth code
-            const localUrl = `http://${LOCAL_HOST}:${LOCAL_PORT}/auth/fyers/callback?code=${encodeURIComponent(authCode)}&state=${encodeURIComponent(state || '')}`;
+            // ==========================================
+            // DETECT ENVIRONMENT BEFORE REDIRECTING
+            // ==========================================
             
-            logMessage('Attempting redirect to localhost with real auth code', { 
-                localUrl: `${LOCAL_HOST}:${LOCAL_PORT}/auth/fyers/callback`,
-                authCodeLength: authCode.length,
-                authCodePreview: `${authCode.substring(0, 50)}...`
+            updateContent(`
+                ${showSpinner()}
+                <h1 class="pulse">Detecting Environment<div class="loading-dots"><span></span><span></span><span></span></div></h1>
+                <p>Checking if your DAKSphere app is running on server or localhost...</p>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+            `);
+            
+            detectedEnvironment = await detectEnvironment();
+            
+            // Build redirect URL with detected environment
+            const localUrl = buildCallbackUrl(detectedEnvironment, authCode, state);
+            
+            logMessage('Redirecting to detected environment', { 
+                environment: detectedEnvironment.name,
+                url: localUrl
             });
             
             // Show success message and redirect
-            showSuccess(authCode, localUrl);
+            showSuccess(authCode, localUrl, detectedEnvironment);
         }
         
-        // Show success state and handle redirect
-        function showSuccess(authCode, localUrl) {
+        // ==========================================
+        // UI DISPLAY FUNCTIONS
+        // ==========================================
+        
+        function showSuccess(authCode, localUrl, envConfig) {
             updateContent(`
                 ${showSpinner()}
                 <h1><span class="status-badge success-badge">✓ Success</span></h1>
@@ -438,54 +571,72 @@
                 <div class="status-message success-message">
                     <strong>JWT Auth token received from Fyers</strong><br>
                     Token length: ${authCode.length} characters<br>
-                    Redirecting to your local DAKSphere application...
+                    <div style="margin-top: 0.5rem;">
+                        <span class="status-badge env-badge">🌐 ${envConfig.name}</span>
+                    </div>
+                    Redirecting to ${envConfig.host}:${envConfig.port}...
                 </div>
                 <div class="progress-bar">
                     <div class="progress-fill"></div>
                 </div>
-                <p>Redirecting to: <code style="background: hsl(var(--muted)); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.75rem;">${LOCAL_HOST}:${LOCAL_PORT}</code></p>
+                <p>Environment: <code style="background: hsl(var(--muted)); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.75rem;">${envConfig.name}</code></p>
             `);
             
             // Attempt automatic redirect
             setTimeout(() => {
                 try {
-                    logMessage('Attempting automatic redirect with JWT token');
+                    logMessage('Attempting automatic redirect');
                     window.location.href = localUrl;
                 } catch (redirectError) {
                     logMessage('Automatic redirect failed', { error: redirectError });
-                    showManualRedirect(authCode, localUrl);
+                    showManualRedirect(authCode, localUrl, envConfig);
                 }
             }, REDIRECT_DELAY);
             
             // Show manual fallback after delay
             setTimeout(() => {
-                showManualRedirect(authCode, localUrl);
+                showManualRedirect(authCode, localUrl, envConfig);
             }, FALLBACK_DELAY);
         }
         
-        // Show manual redirect option
-        function showManualRedirect(authCode, localUrl) {
+        function showManualRedirect(authCode, primaryUrl, primaryEnv) {
+            const allUrls = buildAllCallbackUrls(authCode, urlParams.get('state'));
+            
             updateContent(`
                 <h1><span class="status-badge">🔗</span></h1>
                 <h1 style="margin-top: 0.5rem;">Manual Redirect Required</h1>
                 <div class="status-message">
                     <strong>Automatic redirect didn't work</strong><br>
-                    This usually means your local DAKSphere application isn't running on port ${LOCAL_PORT}.
+                    Choose your environment below:
                 </div>
                 
-                <p><strong>Click the button below to complete authentication:</strong></p>
+                <div style="margin: 1.5rem 0;">
+                    <p><strong>Primary (Detected):</strong></p>
+                    <a href="${primaryUrl}" class="manual-link">
+                        🚀 ${primaryEnv.name} (${primaryEnv.host}:${primaryEnv.port})
+                    </a>
+                </div>
                 
-                <a href="${localUrl}" class="manual-link">
-                    🚀 Complete Authentication on DAKSphere
-                </a>
-                
-                <p>Make sure your DAKSphere app is running on <code style="background: hsl(var(--muted)); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.75rem;">http://${LOCAL_HOST}:${LOCAL_PORT}</code></p>
+                <div style="margin: 1.5rem 0; padding-top: 1rem; border-top: 1px solid hsl(var(--border));">
+                    <p><strong>Alternative Options:</strong></p>
+                    ${Object.entries(ENVIRONMENT_CONFIG)
+                        .filter(([key, config]) => config.host !== primaryEnv.host)
+                        .map(([key, config]) => `
+                            <a href="${allUrls[key]}" class="manual-link" style="margin: 0.5rem 0;">
+                                🔄 ${config.name} (${config.host}:${config.port})
+                            </a>
+                        `).join('')
+                    }
+                </div>
                 
                 <details style="margin-top: 2rem;">
                     <summary>🔧 Developer Information</summary>
                     <div style="margin-top: 1rem;">
                         <div class="status-message">
-                            <p><strong>JWT Authorization Token:</strong></p>
+                            <p><strong>Detected Environment:</strong></p>
+                            <div class="code-display">${primaryEnv.name} - ${primaryEnv.host}:${primaryEnv.port}</div>
+                            
+                            <p style="margin-top: 1rem;"><strong>JWT Authorization Token:</strong></p>
                             <div class="code-display">${authCode}</div>
                             
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
@@ -499,21 +650,22 @@
                                 </div>
                             </div>
                             
-                            <p><strong>Full Redirect URL:</strong></p>
-                            <div class="code-display">${localUrl}</div>
-                            
-                            <p style="margin-top: 1rem; font-size: 0.75rem; color: hsl(var(--muted-foreground));">This is the actual Fyers V3 JWT token needed for authentication.</p>
+                            <p><strong>All Callback URLs:</strong></p>
+                            ${Object.entries(allUrls).map(([key, url]) => `
+                                <div style="margin: 0.5rem 0;">
+                                    <p style="font-weight: 500; margin: 0.25rem 0;">${ENVIRONMENT_CONFIG[key].name}:</p>
+                                    <div class="code-display" style="font-size: 0.65rem;">${url}</div>
+                                </div>
+                            `).join('')}
                         </div>
                     </div>
                 </details>
             `);
         }
         
-        // Show error state
         function showError(message) {
             logMessage('Error occurred', { message });
             
-            // Get current URL parameters for debugging
             const urlParams = new URLSearchParams(window.location.search);
             const debugInfo = Object.fromEntries(urlParams.entries());
             
@@ -532,9 +684,11 @@
                         🔄 Retry Authentication
                     </button>
                     
-                    <button class="retry-button" onclick="goToLocalApp()">
-                        🏠 Go to Local App
-                    </button>
+                    ${Object.entries(ENVIRONMENT_CONFIG).map(([key, config]) => `
+                        <button class="retry-button" onclick="window.location.href='${config.protocol}://${config.host}:${config.port}'">
+                            🏠 ${config.name}
+                        </button>
+                    `).join('')}
                 </div>
                 
                 <details style="margin-top: 1rem;">
@@ -547,47 +701,37 @@
                             ).join('') :
                             '<p style="color: hsl(var(--muted-foreground));">No parameters received</p>'
                         }
-                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid hsl(var(--border));">
-                            <p><strong>Expected:</strong> <code>auth_code</code> parameter with JWT token</p>
-                        </div>
                     </div>
                 </details>
             `);
         }
         
-        // Retry authentication
         function retryAuthentication() {
             logMessage('Retrying authentication');
             location.reload();
         }
         
-        // Go to local app
-        function goToLocalApp() {
-            window.location.href = `http://${LOCAL_HOST}:${LOCAL_PORT}`;
-        }
+        // ==========================================
+        // INITIALIZE ON PAGE LOAD
+        // ==========================================
         
-        // Initialize authentication process when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            logMessage('DAKSphere Auth Bridge initialized for Fyers V3', {
-                targetPort: LOCAL_PORT,
-                targetHost: LOCAL_HOST,
+            logMessage('DAKSphere Auth Bridge initialized with dynamic environment detection', {
+                availableEnvironments: Object.keys(ENVIRONMENT_CONFIG),
                 currentUrl: window.location.href
             });
             
-            // Add small delay for better UX
             setTimeout(() => {
                 processAuthentication();
             }, 500);
         });
         
-        // Handle page visibility change (useful for debugging)
         document.addEventListener('visibilitychange', function() {
             if (document.visibilityState === 'visible') {
                 logMessage('Page became visible');
             }
         });
         
-        // Global error handler
         window.addEventListener('error', function(event) {
             logMessage('Global error occurred', { 
                 message: event.message, 
@@ -596,13 +740,10 @@
             });
         });
         
-        // Show current configuration on load
-        logMessage('Configuration loaded', {
-            localPort: LOCAL_PORT,
-            localHost: LOCAL_HOST,
-            redirectDelay: REDIRECT_DELAY,
-            fallbackDelay: FALLBACK_DELAY,
-            expectingParameter: 'auth_code (JWT token)'
+        logMessage('Environment detection configured', {
+            environments: ENVIRONMENT_CONFIG,
+            healthCheckTimeout: HEALTH_CHECK_TIMEOUT,
+            redirectDelay: REDIRECT_DELAY
         });
     </script>
 </body>
