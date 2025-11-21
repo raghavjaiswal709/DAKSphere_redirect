@@ -469,7 +469,7 @@
          */
         function buildCallbackUrl(envConfig, authCode, state) {
             const baseUrl = `${envConfig.protocol}://${envConfig.host}:${envConfig.port}`;
-            return `${baseUrl}/auth/fyers/callback?code=${encodeURIComponent(authCode)}&state=${encodeURIComponent(state || '')}`;
+            return `${baseUrl}/auth/fyers/callback?auth_code=${encodeURIComponent(authCode)}&state=${encodeURIComponent(state || '')}`;
         }
 
         /**
